@@ -15,5 +15,4 @@ export default {
     '!src/**/*.d.ts',
     '!src/**/*.d.mts',
   ],
-  module: 'Node16'
 };

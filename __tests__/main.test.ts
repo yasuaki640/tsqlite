@@ -1,10 +1,11 @@
-import { Delays, greeter } from '../src/main.js';
+import { Delays, greeter } from "../src/main.js";
+import { jest } from "@jest/globals";
 
-describe('greeter function', () => {
-  const name = 'John';
+describe("greeter function", () => {
+  const name = "John";
   let hello: string;
 
-  let timeoutSpy: jest.SpyInstance;
+  let timeoutSpy: jest.SpiedFunction<typeof setTimeout>;
 
   // Act before assertions
   beforeAll(async () => {
@@ -14,7 +15,7 @@ describe('greeter function', () => {
     // https://jestjs.io/blog/2021/05/25/jest-27#flipping-defaults
     // https://github.com/facebook/jest/pull/5171
     jest.useFakeTimers();
-    timeoutSpy = jest.spyOn(global, 'setTimeout');
+    timeoutSpy = jest.spyOn(global, "setTimeout");
 
     const p: Promise<string> = greeter(name);
     jest.runOnlyPendingTimers();
@@ -27,16 +28,16 @@ describe('greeter function', () => {
   });
 
   // Assert if setTimeout was called properly
-  it('delays the greeting by 2 seconds', () => {
+  it("delays the greeting by 2 seconds", () => {
     expect(setTimeout).toHaveBeenCalledTimes(1);
     expect(setTimeout).toHaveBeenLastCalledWith(
       expect.any(Function),
-      Delays.Long,
+      Delays.Long
     );
   });
 
   // Assert greeter result
-  it('greets a user with `Hello, {name}` message', () => {
+  it("greets a user with `Hello, {name}` message", () => {
     expect(hello).toBe(`Hello, ${name}`);
   });
 });
