@@ -16,10 +16,10 @@ export enum Delays {
  */
 function delayedHello(
   name: string,
-  delay: number = Delays.Medium,
+  delay: number = Delays.Medium
 ): Promise<string> {
   return new Promise((resolve: (value?: string) => void) =>
-    setTimeout(() => resolve(`Hello, ${name}`), delay),
+    setTimeout(() => resolve(`Hello, ${name}`), delay)
   );
 }
 
@@ -32,3 +32,6 @@ export async function greeter(name: any) { // eslint-disable-line @typescript-es
   // The name parameter should be of type string. Any is used only to trigger the rule.
   return await delayedHello(name, Delays.Long);
 }
+
+const greet = await delayedHello("sdf");
+console.log(greet)

@@ -1,17 +1,16 @@
 {
-  "name": "node-typescript-boilerplate",
+  "name": "tsqlite",
   "version": "0.0.0",
-  "description": "Minimalistic boilerplate to quick-start Node.js development in TypeScript.",
   "type": "module",
   "engines": {
-    "node": ">= 16.13 <17"
+    "node": ">= 19"
   },
   "devDependencies": {
     "@types/jest": "~29.1",
     "@types/node": "~16",
     "@typescript-eslint/eslint-plugin": "~5.39",
     "@typescript-eslint/parser": "~5.39",
-    "eslint": "~8.24",
+    "eslint": "~8.22",
     "eslint-config-prettier": "~8.5",
     "eslint-plugin-jest": "~27.1",
     "jest": "~29.1",
@@ -33,12 +32,9 @@
     "prettier": "prettier --config .prettierrc --write .",
     "test:watch": "jest --watch"
   },
-  "author": "Jakub Synowiec <jsynowiec@users.noreply.github.com>",
+  "author": "Yasuaki Watanabe <yasuaki640@gmail.com>",
   "license": "Apache-2.0",
   "dependencies": {
     "tslib": "~2.4"
-  },
-  "volta": {
-    "node": "16.17.0"
   }
 }
