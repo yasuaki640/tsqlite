@@ -1,6 +1,6 @@
 import * as readline from "readline";
 
-async function* readInputs(prompt: string) {
+const readInputs = async function* (prompt: string) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -13,9 +13,9 @@ async function* readInputs(prompt: string) {
   } finally {
     rl.close();
   }
-}
+};
 
-async function main() {
+const main = async () => {
   for await (const input of readInputs("db > ")) {
     if (input == ".exit") {
       process.exit();
@@ -23,6 +23,6 @@ async function main() {
       console.log(`Unrecognized command ${input}.\n`);
     }
   }
-}
+};
 
 main();
