@@ -1,5 +1,9 @@
 import * as readline from "readline";
 
+const ExecuteSuccess = Symbol();
+const ExecuteTableFull = Symbol();
+type ExecuteResult = typeof ExecuteSuccess | typeof ExecuteTableFull
+
 const MetaCommandSuccess = Symbol();
 const MetaCommandUnrecognizedCommand = Symbol();
 type MetaCommandResult = typeof MetaCommandSuccess | typeof MetaCommandUnrecognizedCommand;
@@ -13,8 +17,8 @@ const StatementInsert = Symbol();
 const StatementSelect = Symbol();
 type StatementType = typeof StatementInsert | typeof StatementSelect;
 
-const COLUMN_USERNAME_SIZE = 32;
-const COLUMN_EMAIL_SIZE = 255;
+// const COLUMN_USERNAME_SIZE = 32;
+// const COLUMN_EMAIL_SIZE = 255;
 type Row = {
   id: number;
   username: string;
@@ -23,20 +27,30 @@ type Row = {
 
 type Statement = {
   type: StatementType;
-  rowToInsert: Row;
+  rowToInsert?: Row;
 }
 
-const ID_SIZE = 4;
-const USERNAME_SIZE = COLUMN_USERNAME_SIZE;
-const EMAIL_SIZE = COLUMN_EMAIL_SIZE;
-const ID_OFFSET = 0;
-const USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
-const EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
-const ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
-
-// メモリにデータを書き込み
-const serializeRow = (source: Row, destination: unknown, memory: WebAssembly.Memory) => {
-};
+// const ID_SIZE = 4;
+// const USERNAME_SIZE = COLUMN_USERNAME_SIZE;
+// const EMAIL_SIZE = COLUMN_EMAIL_SIZE;
+// const ID_OFFSET = 0;
+// const USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
+// const EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
+// const ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
+//
+// // メモリにデータを書き込み
+// const serializeRow = (source: Row, destination: number, memory: Uint8Array) => {
+// };
+//
+// const PAGE_SIZE = 4096;
+// const TABLE_MAX_PAGES = 100;
+// const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
+// const TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
+//
+// type Table = {
+//   numRows: number;
+//   pages: ArrayBuffer[];
+// }
 
 const doMetaCommand: (input: string) => MetaCommandResult = (input: string) => {
   if (input.includes(".exit")) {
@@ -49,12 +63,23 @@ const doMetaCommand: (input: string) => MetaCommandResult = (input: string) => {
 const prepareStatement: (input: string) => [PrepareResult, Statement?] = (input: string) => {
   const CLAUSE_INSERT = "insert" + " ";
   if (input.startsWith(CLAUSE_INSERT)) {
-    const args = input.replace(CLAUSE_INSERT, "").split(" ");
+    const args = input
+      .replace(CLAUSE_INSERT, "")
+      .split(" ")
+      .filter(a => a !== "");
+
     if (args.length < 3) {
       return [PrepareSyntaxError];
     }
-    return [PrepareSuccess, { type: StatementInsert }];
+    const rowToInsert: Row = {
+      id: parseInt(args[0]),
+      email: args[1],
+      username: args[2]
+    };
+
+    return [PrepareSuccess, { type: StatementInsert, rowToInsert }];
   }
+
   if (input === "select") {
     return [PrepareSuccess, { type: StatementSelect }];
   }
@@ -77,15 +102,25 @@ const readInputs = async function* (prompt: string): AsyncGenerator<string> {
   }
 };
 
-const executeStatement: (statement: Statement) => void = (statement: Statement) => {
-  switch (statement.type) {
+const executeStatement: (statement: Statement) => ExecuteResult = (statement: Statement) => {
+  switch (statement?.type) {
     case (StatementInsert):
-      console.log("This is where we would do an insert.");
-      break;
+      return executeInsert(statement);
     case (StatementSelect):
-      console.log("This is where we would do an select.");
-      break;
+      return executeSelect(statement);
   }
+};
+
+const executeInsert: (statement: Statement) => ExecuteResult = (statement: Statement) => {
+  console.log(statement.rowToInsert);
+  console.log("exec insert");
+  return ExecuteSuccess;
+};
+
+const executeSelect: (statement: Statement) => ExecuteResult = (statement: Statement) => {
+  console.log(statement);
+  console.log("exec select");
+  return ExecuteSuccess;
 };
 
 const main: () => void = async () => {
@@ -105,13 +140,22 @@ const main: () => void = async () => {
     switch (res) {
       case (PrepareSuccess):
         break;
+      case (PrepareSyntaxError):
+        console.log("Syntax error. Could not parse statement.");
+        break;
       case (PrepareUnrecognizedCommand):
         console.log(`Unrecognized keyword at start of ${input}`);
         continue;
     }
 
-    executeStatement(statement);
-    console.log("Executed.");
+    switch (executeStatement(statement)) {
+      case (ExecuteSuccess):
+        console.log("Executed.");
+        break;
+      case (ExecuteTableFull):
+        console.log("Error:Table full.");
+        break;
+    }
   }
 };
 
