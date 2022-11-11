@@ -6,15 +6,37 @@ type MetaCommandResult = typeof MetaCommandSuccess | typeof MetaCommandUnrecogni
 
 const PrepareSuccess = Symbol();
 const PrepareUnrecognizedCommand = Symbol();
-type PrepareResult = typeof PrepareSuccess | typeof PrepareUnrecognizedCommand;
+const PrepareSyntaxError = Symbol();
+type PrepareResult = typeof PrepareSuccess | typeof PrepareUnrecognizedCommand | typeof PrepareSyntaxError;
 
 const StatementInsert = Symbol();
 const StatementSelect = Symbol();
 type StatementType = typeof StatementInsert | typeof StatementSelect;
 
-interface Statement {
-  type: StatementType;
+const COLUMN_USERNAME_SIZE = 32;
+const COLUMN_EMAIL_SIZE = 255;
+type Row = {
+  id: number;
+  username: string;
+  email: string;
 }
+
+type Statement = {
+  type: StatementType;
+  rowToInsert: Row;
+}
+
+const ID_SIZE = 4;
+const USERNAME_SIZE = COLUMN_USERNAME_SIZE;
+const EMAIL_SIZE = COLUMN_EMAIL_SIZE;
+const ID_OFFSET = 0;
+const USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
+const EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
+const ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
+
+// メモリにデータを書き込み
+const serializeRow = (source: Row, destination: unknown, memory: WebAssembly.Memory) => {
+};
 
 const doMetaCommand: (input: string) => MetaCommandResult = (input: string) => {
   if (input.includes(".exit")) {
@@ -25,7 +47,12 @@ const doMetaCommand: (input: string) => MetaCommandResult = (input: string) => {
 };
 
 const prepareStatement: (input: string) => [PrepareResult, Statement?] = (input: string) => {
-  if (input.startsWith("insert ")) {
+  const CLAUSE_INSERT = "insert" + " ";
+  if (input.startsWith(CLAUSE_INSERT)) {
+    const args = input.replace(CLAUSE_INSERT, "").split(" ");
+    if (args.length < 3) {
+      return [PrepareSyntaxError];
+    }
     return [PrepareSuccess, { type: StatementInsert }];
   }
   if (input === "select") {
