@@ -114,17 +114,18 @@ const readInputs = async function* (prompt: string): AsyncGenerator<string> {
   }
 };
 
-const executeStatement: (statement: Statement) => ExecuteResult = (statement: Statement) => {
+const executeStatement: (statement: Statement, table: Table) => ExecuteResult = (statement: Statement, table: Table) => {
   switch (statement?.type) {
     case (StatementInsert):
-      return executeInsert(statement);
+      return executeInsert(statement, table);
     case (StatementSelect):
       return executeSelect(statement);
   }
 };
 
-const executeInsert: (statement: Statement) => ExecuteResult = (statement: Statement) => {
+const executeInsert: (statement: Statement, table: Table) => ExecuteResult = (statement: Statement, table: Table) => {
   console.log(statement);
+  console.log(table.pages.length);
   return ExecuteSuccess;
 };
 
@@ -136,7 +137,6 @@ const executeSelect: (statement: Statement) => ExecuteResult = (statement: State
 
 const main: () => void = async () => {
   const table = newTable();
-  console.log(table);
   for await (const input of readInputs("db > ")) {
     if (input.startsWith(".")) {
       switch (doMetaCommand(input)) {
@@ -161,7 +161,7 @@ const main: () => void = async () => {
         continue;
     }
 
-    switch (executeStatement(statement)) {
+    switch (executeStatement(statement, table)) {
       case (ExecuteSuccess):
         console.log("Executed.");
         break;
