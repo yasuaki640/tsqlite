@@ -37,20 +37,32 @@ type Statement = {
 // const USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
 // const EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
 // const ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
-//
+
 // // メモリにデータを書き込み
 // const serializeRow = (source: Row, destination: number, memory: Uint8Array) => {
 // };
-//
-// const PAGE_SIZE = 4096;
-// const TABLE_MAX_PAGES = 100;
+
+const PAGE_SIZE = 4096;
+const TABLE_MAX_PAGES = 100;
 // const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 // const TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
-//
-// type Table = {
-//   numRows: number;
-//   pages: ArrayBuffer[];
-// }
+
+type Table = {
+  numRows: number;
+  pages: Uint8Array[];
+}
+
+const newTable: () => Table = () => {
+  const buffer = new ArrayBuffer(PAGE_SIZE * TABLE_MAX_PAGES);
+
+  const pages: Uint8Array[] = [];
+  for (let i = 0; i < PAGE_SIZE * TABLE_MAX_PAGES; i += PAGE_SIZE) {
+    const p = new Uint8Array(buffer.slice(i, (i + PAGE_SIZE)));
+    pages.push(p);
+  }
+
+  return { numRows: 0, pages };
+};
 
 const doMetaCommand: (input: string) => MetaCommandResult = (input: string) => {
   if (input.includes(".exit")) {
@@ -112,8 +124,7 @@ const executeStatement: (statement: Statement) => ExecuteResult = (statement: St
 };
 
 const executeInsert: (statement: Statement) => ExecuteResult = (statement: Statement) => {
-  console.log(statement.rowToInsert);
-  console.log("exec insert");
+  console.log(statement);
   return ExecuteSuccess;
 };
 
@@ -124,6 +135,8 @@ const executeSelect: (statement: Statement) => ExecuteResult = (statement: State
 };
 
 const main: () => void = async () => {
+  const table = newTable();
+  console.log(table);
   for await (const input of readInputs("db > ")) {
     if (input.startsWith(".")) {
       switch (doMetaCommand(input)) {
