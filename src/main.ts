@@ -52,7 +52,7 @@ type Table = {
   pages: Uint8Array[];
 }
 
-const newTable: () => Table = () => {
+function newTable(): Table {
   const buffer = new ArrayBuffer(PAGE_SIZE * TABLE_MAX_PAGES);
 
   const pages: Uint8Array[] = [];
@@ -62,17 +62,17 @@ const newTable: () => Table = () => {
   }
 
   return { numRows: 0, pages };
-};
+}
 
-const doMetaCommand: (input: string) => MetaCommandResult = (input: string) => {
+function doMetaCommand(input: string): MetaCommandResult {
   if (input.includes(".exit")) {
     process.exit();
   } else {
     return MetaCommandUnrecognizedCommand;
   }
-};
+}
 
-const prepareStatement: (input: string) => [PrepareResult, Statement?] = (input: string) => {
+function prepareStatement(input: string): [PrepareResult, Statement?] {
   const CLAUSE_INSERT = "insert" + " ";
   if (input.startsWith(CLAUSE_INSERT)) {
     const args = input
@@ -97,9 +97,9 @@ const prepareStatement: (input: string) => [PrepareResult, Statement?] = (input:
   }
 
   return [PrepareUnrecognizedCommand];
-};
+}
 
-const readInputs = async function* (prompt: string): AsyncGenerator<string> {
+async function* readInputs(prompt: string): AsyncGenerator<string> {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -112,30 +112,30 @@ const readInputs = async function* (prompt: string): AsyncGenerator<string> {
   } finally {
     rl.close();
   }
-};
+}
 
-const executeStatement: (statement: Statement, table: Table) => ExecuteResult = (statement: Statement, table: Table) => {
+function executeStatement(statement: Statement, table: Table): ExecuteResult {
   switch (statement?.type) {
     case (StatementInsert):
       return executeInsert(statement, table);
     case (StatementSelect):
       return executeSelect(statement);
   }
-};
+}
 
-const executeInsert: (statement: Statement, table: Table) => ExecuteResult = (statement: Statement, table: Table) => {
+function executeInsert(statement: Statement, table: Table): ExecuteResult {
   console.log(statement);
   console.log(table.pages.length);
   return ExecuteSuccess;
-};
+}
 
-const executeSelect: (statement: Statement) => ExecuteResult = (statement: Statement) => {
+function executeSelect(statement: Statement): ExecuteResult {
   console.log(statement);
   console.log("exec select");
   return ExecuteSuccess;
-};
+}
 
-const main: () => void = async () => {
+async function main(): Promise<void> {
   const table = newTable();
   for await (const input of readInputs("db > ")) {
     if (input.startsWith(".")) {
@@ -170,6 +170,6 @@ const main: () => void = async () => {
         break;
     }
   }
-};
+}
 
 main();
