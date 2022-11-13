@@ -136,11 +136,13 @@ function prepareStatement(input: string): [PrepareResult, Statement?] {
       .split(" ")
       .filter(a => a !== "");
 
-    if (args.length < 3) {
+    const id = parseInt(args[0]);
+    if (args.length < 3 || isNaN(id)) {
       return [PrepareSyntaxError];
     }
+
     const rowToInsert: Row = {
-      id: parseInt(args[0]),
+      id,
       email: args[1],
       username: args[2]
     };
