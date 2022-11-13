@@ -17,8 +17,8 @@ const StatementInsert = Symbol();
 const StatementSelect = Symbol();
 type StatementType = typeof StatementInsert | typeof StatementSelect;
 
-// const COLUMN_USERNAME_SIZE = 32;
-// const COLUMN_EMAIL_SIZE = 255;
+const COLUMN_USERNAME_SIZE = 32;
+const COLUMN_EMAIL_SIZE = 255;
 type Row = {
   id: number;
   username: string;
@@ -30,26 +30,52 @@ type Statement = {
   rowToInsert?: Row;
 }
 
-// const ID_SIZE = 4;
-// const USERNAME_SIZE = COLUMN_USERNAME_SIZE;
-// const EMAIL_SIZE = COLUMN_EMAIL_SIZE;
-// const ID_OFFSET = 0;
-// const USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
-// const EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
-// const ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
+const ID_SIZE = 4; // byte
+const USERNAME_SIZE = COLUMN_USERNAME_SIZE; // byte
+const EMAIL_SIZE = COLUMN_EMAIL_SIZE; // byte
+const ID_OFFSET = 0;
+const USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
+const EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
+const ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
-// // メモリにデータを書き込み
-// const serializeRow = (source: Row, destination: number, memory: Uint8Array) => {
-// };
+function getNthDigit(num: number, nth: number): number {
+  return +num.toString()[nth];
+}
+
+// メモリにデータを書き込み
+function serializeRow(source: Row, departure: number, page: Uint8Array): void {
+  const idLen = Math.min(ID_SIZE, source.id.toString().length);
+  for (let i = 0; i < idLen; i++) {
+    page[departure + i] = getNthDigit(source.id, i);
+  }
+
+  const usernameLen = Math.min(USERNAME_SIZE, source.username.length);
+  for (let i = 0; i < usernameLen; i++) {
+    page[departure + USERNAME_OFFSET + i] = source.username.charCodeAt(i);
+  }
+
+  const emailLen = Math.min(EMAIL_SIZE, source.email.length);
+  for (let i = 0; i < emailLen; i++) {
+    page[departure + EMAIL_OFFSET + i] = source.email.charCodeAt(i);
+  }
+}
 
 const PAGE_SIZE = 4096;
 const TABLE_MAX_PAGES = 100;
-// const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
-// const TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
+const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
+const TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
 
 type Table = {
   numRows: number;
   pages: Uint8Array[];
+}
+
+function rowSlot(table: Table, rowNum: number): [number, number] {
+  const pageNum = Math.trunc(rowNum / ROWS_PER_PAGE);
+// TODO demand loading
+  const rowOffset = rowNum % ROWS_PER_PAGE;
+  const byteOffset = rowOffset * ROW_SIZE;
+  return [pageNum, byteOffset];
 }
 
 function newTable(): Table {
@@ -124,8 +150,14 @@ function executeStatement(statement: Statement, table: Table): ExecuteResult {
 }
 
 function executeInsert(statement: Statement, table: Table): ExecuteResult {
-  console.log(statement);
-  console.log(table.pages.length);
+  if (table.numRows >= TABLE_MAX_ROWS) {
+    return ExecuteTableFull;
+  }
+
+  const [pageNum, byteOffset] = rowSlot(table, table.numRows);
+  serializeRow(statement.rowToInsert, byteOffset, table.pages[pageNum]);
+  ++table.numRows;
+
   return ExecuteSuccess;
 }
 
