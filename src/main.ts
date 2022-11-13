@@ -60,6 +60,36 @@ function serializeRow(source: Row, departure: number, page: Uint8Array): void {
   }
 }
 
+// メモリからデータを取得
+function deserializeRow(page: Uint8Array, depature: number): Row {
+  let idStr = "";
+  for (let i = 0; i < ID_SIZE; i++) {
+    const digit = page[depature + i];
+    if (digit === 0) break;
+    idStr += digit.toString();
+  }
+
+  let username = "";
+  for (let i = 0; i < USERNAME_SIZE; i++) {
+    const code = page[depature + USERNAME_OFFSET + i];
+    if (code === 0) break;
+    username += String.fromCharCode(code);
+  }
+
+  let email = "";
+  for (let i = 0; i < EMAIL_SIZE; i++) {
+    const code = page[depature + EMAIL_OFFSET + i];
+    if (code === 0) break;
+    email += String.fromCharCode(code);
+  }
+
+  return {
+    id: parseInt(idStr),
+    username,
+    email
+  };
+}
+
 const PAGE_SIZE = 4096;
 const TABLE_MAX_PAGES = 100;
 const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
@@ -145,7 +175,7 @@ function executeStatement(statement: Statement, table: Table): ExecuteResult {
     case (StatementInsert):
       return executeInsert(statement, table);
     case (StatementSelect):
-      return executeSelect(statement);
+      return executeSelect(statement, table);
   }
 }
 
@@ -161,9 +191,16 @@ function executeInsert(statement: Statement, table: Table): ExecuteResult {
   return ExecuteSuccess;
 }
 
-function executeSelect(statement: Statement): ExecuteResult {
-  console.log(statement);
-  console.log("exec select");
+function printRow(row: Row): void {
+  console.log(`(${row.id}, ${row.username}, ${row.email})`);
+}
+
+function executeSelect(statement: Statement, table: Table): ExecuteResult {
+  for (let i = 0; i < table.numRows; i++) {
+    const [pageNum] = rowSlot(table, table.numRows);
+    const row: Row = deserializeRow(table.pages[pageNum], i * ROW_SIZE);
+    printRow(row);
+  }
   return ExecuteSuccess;
 }
 
