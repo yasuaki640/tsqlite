@@ -43,7 +43,7 @@ function getNthDigit(num: number, nth: number): number {
 }
 
 // メモリにデータを書き込み
-function serializeRow(source: Row, departure: number, page: Uint8Array): void {
+async function serializeRow(source: Row, departure: number, page: Uint8Array): Promise<void> {
   const idLen = Math.min(ID_SIZE, source.id.toString().length);
   for (let i = 0; i < idLen; i++) {
     page[departure + i] = getNthDigit(source.id, i);
@@ -172,29 +172,30 @@ async function* readInputs(prompt: string): AsyncGenerator<string> {
   }
 }
 
-function executeStatement(statement: Statement, table: Table): ExecuteResult {
+async function executeStatement(statement: Statement, table: Table): Promise<ExecuteResult> {
   switch (statement?.type) {
     case (StatementInsert):
-      return executeInsert(statement, table);
+      return await executeInsert(statement, table);
     case (StatementSelect):
       return executeSelect(statement, table);
   }
 }
 
-function executeInsert(statement: Statement, table: Table): ExecuteResult {
+async function executeInsert(statement: Statement, table: Table): Promise<ExecuteResult> {
   if (table.numRows >= TABLE_MAX_ROWS) {
     return ExecuteTableFull;
   }
 
   const [pageNum, byteOffset] = rowSlot(table, table.numRows);
-  serializeRow(statement.rowToInsert, byteOffset, table.pages[pageNum]);
+  await serializeRow(statement.rowToInsert, byteOffset, table.pages[pageNum]);
+
   ++table.numRows;
 
   return ExecuteSuccess;
 }
 
 function printRow(row: Row): void {
-  console.log(`(${row.id}, ${row.username}, ${row.email})`);
+  console.log(`(${row.id}, ${row.email}, ${row.username})`);
 }
 
 function executeSelect(statement: Statement, table: Table): ExecuteResult {
@@ -232,7 +233,7 @@ async function main(): Promise<void> {
         continue;
     }
 
-    switch (executeStatement(statement, table)) {
+    switch (await executeStatement(statement, table)) {
       case (ExecuteSuccess):
         console.log("Executed.");
         break;
