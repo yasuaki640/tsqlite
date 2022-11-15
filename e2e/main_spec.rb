@@ -3,7 +3,7 @@ describe 'database' do
     raw_output = nil
     IO.popen("npm start --silent", "r+") do |pipe|
       commands.each do |command|
-        sleep 0.355
+        sleep 0.4
         pipe.puts command
       end
 
@@ -37,4 +37,22 @@ describe 'database' do
 #     result = run_script(script)
 #     expect(result[-2]).to eq('db > Error: Table full.')
 #   end
+
+  it 'allows inserting strings that are the maximum length' do
+    long_username = "a"*32
+    long_email = "a"*255
+    script = [
+      "insert 1 #{long_username} #{long_email}",
+      "select",
+      ".exit",
+    ]
+    result = run_script(script)
+    expect(result).to match_array([
+      "db > Executed.",
+      "db > (1, #{long_username}, #{long_email})",
+      "Executed.",
+      "db > ",
+    ])
+  end
+
 end

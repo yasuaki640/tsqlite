@@ -61,24 +61,24 @@ async function serializeRow(source: Row, departure: number, page: Uint8Array): P
 }
 
 // メモリからデータを取得
-function deserializeRow(page: Uint8Array, depature: number): Row {
+function deserializeRow(page: Uint8Array, departure: number): Row {
   let idStr = "";
   for (let i = 0; i < ID_SIZE; i++) {
-    const digit = page[depature + i];
+    const digit = page[departure + i];
     if (digit === 0) break;
     idStr += digit.toString();
   }
 
   let username = "";
   for (let i = 0; i < USERNAME_SIZE; i++) {
-    const code = page[depature + USERNAME_OFFSET + i];
+    const code = page[departure + USERNAME_OFFSET + i];
     if (code === 0) break;
     username += String.fromCharCode(code);
   }
 
   let email = "";
   for (let i = 0; i < EMAIL_SIZE; i++) {
-    const code = page[depature + EMAIL_OFFSET + i];
+    const code = page[departure + EMAIL_OFFSET + i];
     if (code === 0) break;
     email += String.fromCharCode(code);
   }
@@ -93,7 +93,7 @@ function deserializeRow(page: Uint8Array, depature: number): Row {
 const PAGE_SIZE = 4096;
 const TABLE_MAX_PAGES = 100;
 const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
-const TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGES;
+const TABLE_MAX_ROWS = Math.trunc(ROWS_PER_PAGE * TABLE_MAX_PAGES);
 
 type Table = {
   numRows: number;
@@ -143,8 +143,8 @@ function prepareStatement(input: string): [PrepareResult, Statement?] {
 
     const rowToInsert: Row = {
       id,
-      email: args[1],
-      username: args[2]
+      username: args[1],
+      email: args[2]
     };
 
     return [PrepareSuccess, { type: StatementInsert, rowToInsert }];
@@ -195,7 +195,7 @@ async function executeInsert(statement: Statement, table: Table): Promise<Execut
 }
 
 function printRow(row: Row): void {
-  console.log(`(${row.id}, ${row.email}, ${row.username})`);
+  console.log(`(${row.id}, ${row.username}, ${row.email})`);
 }
 
 function executeSelect(statement: Statement, table: Table): ExecuteResult {
