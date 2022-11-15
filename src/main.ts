@@ -11,7 +11,12 @@ type MetaCommandResult = typeof MetaCommandSuccess | typeof MetaCommandUnrecogni
 const PrepareSuccess = Symbol();
 const PrepareUnrecognizedCommand = Symbol();
 const PrepareSyntaxError = Symbol();
-type PrepareResult = typeof PrepareSuccess | typeof PrepareUnrecognizedCommand | typeof PrepareSyntaxError;
+const PrepareStringTooLong = Symbol();
+type PrepareResult =
+  typeof PrepareSuccess
+  | typeof PrepareUnrecognizedCommand
+  | typeof PrepareSyntaxError
+  | typeof PrepareStringTooLong;
 
 const StatementInsert = Symbol();
 const StatementSelect = Symbol();
@@ -128,26 +133,37 @@ function doMetaCommand(input: string): MetaCommandResult {
   }
 }
 
+const CLAUSE_INSERT = "insert" + " ";
+
+function prepareInsert(input: string): [PrepareResult, Statement?] {
+  const args = input
+    .replace(CLAUSE_INSERT, "")
+    .split(" ")
+    .filter(split => split !== "");
+
+  const [idStr, username, email] = args;
+
+  if (!(idStr && username && email)) {
+    return [PrepareSyntaxError];
+  }
+
+  if (username.length > COLUMN_USERNAME_SIZE || email.length > COLUMN_EMAIL_SIZE) {
+    return [PrepareStringTooLong];
+  }
+
+
+  const rowToInsert: Row = {
+    id: parseInt(idStr),
+    username: args[1],
+    email: args[2]
+  };
+
+  return [PrepareSuccess, { type: StatementInsert, rowToInsert }];
+}
+
 function prepareStatement(input: string): [PrepareResult, Statement?] {
-  const CLAUSE_INSERT = "insert" + " ";
   if (input.startsWith(CLAUSE_INSERT)) {
-    const args = input
-      .replace(CLAUSE_INSERT, "")
-      .split(" ")
-      .filter(a => a !== "");
-
-    const id = parseInt(args[0]);
-    if (args.length < 3 || isNaN(id)) {
-      return [PrepareSyntaxError];
-    }
-
-    const rowToInsert: Row = {
-      id,
-      username: args[1],
-      email: args[2]
-    };
-
-    return [PrepareSuccess, { type: StatementInsert, rowToInsert }];
+    return prepareInsert(input);
   }
 
   if (input === "select") {
@@ -225,6 +241,9 @@ async function main(): Promise<void> {
     switch (res) {
       case (PrepareSuccess):
         break;
+      case (PrepareStringTooLong):
+        console.log("String is too long.");
+        continue;
       case (PrepareSyntaxError):
         console.log("Syntax error. Could not parse statement.");
         break;
