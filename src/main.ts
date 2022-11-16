@@ -9,11 +9,13 @@ const MetaCommandUnrecognizedCommand = Symbol();
 type MetaCommandResult = typeof MetaCommandSuccess | typeof MetaCommandUnrecognizedCommand;
 
 const PrepareSuccess = Symbol();
+const PrepareNegativeID = Symbol();
 const PrepareUnrecognizedCommand = Symbol();
 const PrepareSyntaxError = Symbol();
 const PrepareStringTooLong = Symbol();
 type PrepareResult =
   typeof PrepareSuccess
+  | typeof PrepareNegativeID
   | typeof PrepareUnrecognizedCommand
   | typeof PrepareSyntaxError
   | typeof PrepareStringTooLong;
@@ -151,11 +153,15 @@ function prepareInsert(input: string): [PrepareResult, Statement?] {
     return [PrepareStringTooLong];
   }
 
+  const id = parseInt(idStr);
+  if (id < 0) {
+    return [PrepareNegativeID];
+  }
 
   const rowToInsert: Row = {
-    id: parseInt(idStr),
-    username: args[1],
-    email: args[2]
+    id,
+    username,
+    email
   };
 
   return [PrepareSuccess, { type: StatementInsert, rowToInsert }];
@@ -240,6 +246,9 @@ async function main(): Promise<void> {
 
     switch (res) {
       case (PrepareSuccess):
+        break;
+      case (PrepareNegativeID):
+        console.log("ID must be positive.");
         break;
       case (PrepareStringTooLong):
         console.log("String is too long.");
