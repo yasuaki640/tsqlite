@@ -116,6 +116,7 @@ type Table = {
 function rowSlot(table: Table, rowNum: number): [number, number] {
   const pageNum = Math.trunc(rowNum / ROWS_PER_PAGE);
 // TODO demand loading
+  // TODO get pageでページフォールトした際のキャッシュ機構を実装
   const rowOffset = rowNum % ROWS_PER_PAGE;
   const byteOffset = rowOffset * ROW_SIZE;
   return [pageNum, byteOffset];
