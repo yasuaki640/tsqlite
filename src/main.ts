@@ -1,4 +1,5 @@
 import * as readline from "readline";
+import * as fs from "fs";
 
 const ExecuteSuccess = Symbol();
 const ExecuteTableFull = Symbol();
@@ -50,7 +51,7 @@ function getNthDigit(num: number, nth: number): number {
 }
 
 // メモリにデータを書き込み
-async function serializeRow(source: Row, departure: number, page: Uint8Array): Promise<void> {
+function serializeRow(source: Row, departure: number, page: Uint8Array): void {
   const idLen = Math.min(ID_SIZE, source.id.toString().length);
   for (let i = 0; i < idLen; i++) {
     page[departure + i] = getNthDigit(source.id, i);
@@ -145,7 +146,7 @@ function prepareInsert(input: string): [PrepareResult, Statement?] {
 
   const [idStr, username, email] = args;
 
-  if (!(idStr && username && email)) {
+  if (!idStr || !username || !email) {
     return [PrepareSyntaxError];
   }
 
@@ -194,22 +195,22 @@ async function* readInputs(prompt: string): AsyncGenerator<string> {
   }
 }
 
-async function executeStatement(statement: Statement, table: Table): Promise<ExecuteResult> {
+function executeStatement(statement: Statement, table: Table): ExecuteResult {
   switch (statement?.type) {
     case (StatementInsert):
-      return await executeInsert(statement, table);
+      return executeInsert(statement, table);
     case (StatementSelect):
       return executeSelect(statement, table);
   }
 }
 
-async function executeInsert(statement: Statement, table: Table): Promise<ExecuteResult> {
+function executeInsert(statement: Statement, table: Table): ExecuteResult {
   if (table.numRows >= TABLE_MAX_ROWS) {
     return ExecuteTableFull;
   }
 
   const [pageNum, byteOffset] = rowSlot(table, table.numRows);
-  await serializeRow(statement.rowToInsert, byteOffset, table.pages[pageNum]);
+  serializeRow(statement.rowToInsert, byteOffset, table.pager[pageNum]);
 
   ++table.numRows;
 
@@ -223,17 +224,22 @@ function printRow(row: Row): void {
 function executeSelect(statement: Statement, table: Table): ExecuteResult {
   for (let i = 0; i < table.numRows; i++) {
     const [pageNum] = rowSlot(table, table.numRows);
-    const row: Row = deserializeRow(table.pages[pageNum], i * ROW_SIZE);
+    const row: Row = deserializeRow(table.pager[pageNum], i * ROW_SIZE);
     printRow(row);
   }
   return ExecuteSuccess;
 }
 
 async function main(): Promise<void> {
-  const table = newTable();
+  if (process.argv.length < 3) {
+    console.error("Must supply a database filename.");
+    process.exit(1);
+  }
+
+  const table = dbOpen(process.argv[2]);
   for await (const input of readInputs("db > ")) {
     if (input.startsWith(".")) {
-      switch (doMetaCommand(input)) {
+      switch (doMetaCommand(input, table)) {
         case (MetaCommandSuccess):
           continue;
         case(MetaCommandUnrecognizedCommand):
@@ -261,12 +267,12 @@ async function main(): Promise<void> {
         continue;
     }
 
-    switch (await executeStatement(statement, table)) {
+    switch (executeStatement(statement, table)) {
       case (ExecuteSuccess):
         console.log("Executed.");
         break;
       case (ExecuteTableFull):
-        console.log("Error:Table full.");
+        console.log("Error: Table full.");
         break;
     }
   }
