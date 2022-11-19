@@ -104,6 +104,7 @@ const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 const TABLE_MAX_ROWS = Math.trunc(ROWS_PER_PAGE * TABLE_MAX_PAGES);
 
 type Pager = {
+  fileDescriptor: number;
   fileLength: number;
   pages: Uint8Array[];
 }
@@ -123,19 +124,18 @@ function rowSlot(table: Table, rowNum: number): [number, number] {
 }
 
 function pagerOpen(filename: string): Pager {
-  if(fs.existsSync(filename)){
-    fs.openSync(filename,'r');
-  }
+  const flag = fs.existsSync(filename) ? "r+" : "w+";
+  const fd = fs.openSync(filename, flag);
 
-  const stat = fs.statSync(filename);
+  const { size } = fs.statSync(filename);
 
-  const pages: Uint8Array[] = [];
-  for (let i = 0; i < TABLE_MAX_PAGES; i++) {
-    pages[i] = null;
-  }
+  const pages: Uint8Array[] = new Array(TABLE_MAX_PAGES).fill(null);
 
-  // fd を引きまわすとopenしっぱなしにしなきゃ移管ぽいのでfdはファイルアクセス時に適宜取る
-  return { pages, fileLength: stat.size };
+  return {
+    fileDescriptor: fd,
+    fileLength: size,
+    pages
+  };
 }
 
 function dbOpen(filename: string): Table {
