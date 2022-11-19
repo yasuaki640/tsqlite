@@ -123,10 +123,9 @@ function rowSlot(table: Table, rowNum: number): [number, number] {
 }
 
 function pagerOpen(filename: string): Pager {
-  const flag = fs.existsSync(filename)
-    ? "wx+"
-    : "w+";
-  fs.openSync(filename, flag);
+  if(fs.existsSync(filename)){
+    fs.openSync(filename,'r');
+  }
 
   const stat = fs.statSync(filename);
 
@@ -135,6 +134,7 @@ function pagerOpen(filename: string): Pager {
     pages[i] = null;
   }
 
+  // fd を引きまわすとopenしっぱなしにしなきゃ移管ぽいのでfdはファイルアクセス時に適宜取る
   return { pages, fileLength: stat.size };
 }
 
@@ -143,11 +143,6 @@ function dbOpen(filename: string): Table {
   const numRows = pager.fileLength / ROW_SIZE;
 
   return { numRows, pager };
-}
-
-  }
-
-  return { numRows: 0, pages };
 }
 
 function doMetaCommand(input: string): MetaCommandResult {
@@ -261,7 +256,7 @@ async function main(): Promise<void> {
   const table = dbOpen(process.argv[2]);
   for await (const input of readInputs("db > ")) {
     if (input.startsWith(".")) {
-      switch (doMetaCommand(input, table)) {
+      switch (doMetaCommand(input)) {
         case (MetaCommandSuccess):
           continue;
         case(MetaCommandUnrecognizedCommand):
