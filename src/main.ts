@@ -114,10 +114,42 @@ type Table = {
   numRows: number;
 }
 
+function getPage(pager: Pager, pageNum: number): Uint8Array {
+  if (pageNum > TABLE_MAX_PAGES) {
+    console.error("Tried to fetch page number out of bounds. %d > %d", pageNum, TABLE_MAX_PAGES);
+    process.exit(1);
+  }
+
+  if (pager.pages[pageNum] === null) {
+    // Cache miss. Allocate memory and load from file.
+    const page = Buffer.alloc(PAGE_SIZE);
+    let numPages = pager.fileLength / PAGE_SIZE;
+
+    // We might save a partial page at the end of the file
+    if (pager.fileLength % PAGE_SIZE) {
+      ++numPages;
+    }
+
+    if (pageNum <= numPages) {
+      try {
+        fs.readSync(pager.fileDescriptor, page, 0, PAGE_SIZE, numPages * PAGE_SIZE);
+      } catch (e) {
+        console.error("Error reading file: %s", e.message);
+        process.exit(1);
+      }
+    }
+
+    pager.pages[pageNum] = page;
+  }
+
+  return pager.pages[pageNum];
+}
+
 function rowSlot(table: Table, rowNum: number): [number, number] {
   const pageNum = Math.trunc(rowNum / ROWS_PER_PAGE);
 // TODO demand loading
   // TODO get pageでページフォールトした際のキャッシュ機構を実装
+  const page = getPage(table.pager, pageNum);
   const rowOffset = rowNum % ROWS_PER_PAGE;
   const byteOffset = rowOffset * ROW_SIZE;
   return [pageNum, byteOffset];
