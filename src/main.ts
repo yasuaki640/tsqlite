@@ -123,7 +123,7 @@ function getPage(pager: Pager, pageNum: number): Uint8Array {
   if (pager.pages[pageNum] === null) {
     // Cache miss. Allocate memory and load from file.
     const page = Buffer.alloc(PAGE_SIZE);
-    let numPages = pager.fileLength / PAGE_SIZE;
+    let numPages = Math.trunc(pager.fileLength / PAGE_SIZE);
 
     // We might save a partial page at the end of the file
     if (pager.fileLength % PAGE_SIZE) {
@@ -132,7 +132,7 @@ function getPage(pager: Pager, pageNum: number): Uint8Array {
 
     if (pageNum <= numPages) {
       try {
-        fs.readSync(pager.fileDescriptor, page, 0, PAGE_SIZE, numPages * PAGE_SIZE);
+        fs.readSync(pager.fileDescriptor, page, 0, PAGE_SIZE, pageNum * PAGE_SIZE);
       } catch (e) {
         console.error("Error reading file: %s", e.message);
         process.exit(1);
@@ -198,6 +198,23 @@ function dbClose(table: Table): void {
       continue;
     }
     pagerFlush(pager, i, PAGE_SIZE);
+  }
+
+  // There may be a partial page to write to the end of the file
+  // This should not be needed after we switch to a B-tree
+  const numAdditionalRows = table.numRows % ROWS_PER_PAGE;
+  if (numAdditionalRows > 0) {
+    const pageNum = numFullPages;
+    if (pager.pages[numFullPages] !== null) {
+      pagerFlush(pager, pageNum, numAdditionalRows * ROW_SIZE);
+    }
+  }
+
+  try {
+    fs.closeSync(pager.fileDescriptor);
+  } catch (e) {
+    console.error("Error closing db file.");
+    process.exit(1);
   }
 }
 
