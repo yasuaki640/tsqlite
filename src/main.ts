@@ -175,8 +175,35 @@ function dbOpen(filename: string): Table {
   return { numRows, pager };
 }
 
-function doMetaCommand(input: string): MetaCommandResult {
+function pagerFlush(pager: Pager, pageNum: number, size: number): void {
+  if (pager.pages[pageNum] === null) {
+    console.error("Tried to flush null page");
+    process.exit(1);
+  }
+
+  const bytesWritten = fs.writeSync(pager.fileDescriptor, pager.pages[pageNum], 0, size, pageNum * PAGE_SIZE);
+
+  if (bytesWritten === -1) {
+    console.log("Error writing:");
+    process.exit(1);
+  }
+}
+
+function dbClose(table: Table): void {
+  const pager = table.pager;
+  const numFullPages = Math.trunc(table.numRows / ROWS_PER_PAGE);
+
+  for (let i = 0; i < numFullPages; i++) {
+    if (pager.pages[i] === null) {
+      continue;
+    }
+    pagerFlush(pager, i, PAGE_SIZE);
+  }
+}
+
+function doMetaCommand(input: string, table: Table): MetaCommandResult {
   if (input.includes(".exit")) {
+    dbClose(table);
     process.exit();
   } else {
     return MetaCommandUnrecognizedCommand;
@@ -286,7 +313,7 @@ async function main(): Promise<void> {
   const table = dbOpen(process.argv[2]);
   for await (const input of readInputs("db > ")) {
     if (input.startsWith(".")) {
-      switch (doMetaCommand(input)) {
+      switch (doMetaCommand(input, table)) {
         case (MetaCommandSuccess):
           continue;
         case(MetaCommandUnrecognizedCommand):
