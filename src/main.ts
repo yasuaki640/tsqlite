@@ -100,7 +100,7 @@ function deserializeRow(page: Uint8Array, departure: number): Row {
 
 const PAGE_SIZE = 4096;
 const TABLE_MAX_PAGES = 100;
-const ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
+const ROWS_PER_PAGE = Math.trunc(PAGE_SIZE / ROW_SIZE);
 const TABLE_MAX_ROWS = Math.trunc(ROWS_PER_PAGE * TABLE_MAX_PAGES);
 
 type Pager = {
@@ -145,14 +145,12 @@ function getPage(pager: Pager, pageNum: number): Uint8Array {
   return pager.pages[pageNum];
 }
 
-function rowSlot(table: Table, rowNum: number): [number, number] {
+function rowSlot(table: Table, rowNum: number): [Uint8Array, number] {
   const pageNum = Math.trunc(rowNum / ROWS_PER_PAGE);
-// TODO demand loading
-  // TODO get pageでページフォールトした際のキャッシュ機構を実装
   const page = getPage(table.pager, pageNum);
   const rowOffset = rowNum % ROWS_PER_PAGE;
   const byteOffset = rowOffset * ROW_SIZE;
-  return [pageNum, byteOffset];
+  return [page, byteOffset];
 }
 
 function pagerOpen(filename: string): Pager {
@@ -258,8 +256,8 @@ function executeInsert(statement: Statement, table: Table): ExecuteResult {
     return ExecuteTableFull;
   }
 
-  const [pageNum, byteOffset] = rowSlot(table, table.numRows);
-  serializeRow(statement.rowToInsert, byteOffset, table.pager[pageNum]);
+  const [page, byteOffset] = rowSlot(table, table.numRows);
+  serializeRow(statement.rowToInsert, byteOffset, page);
 
   ++table.numRows;
 
@@ -272,8 +270,8 @@ function printRow(row: Row): void {
 
 function executeSelect(statement: Statement, table: Table): ExecuteResult {
   for (let i = 0; i < table.numRows; i++) {
-    const [pageNum] = rowSlot(table, table.numRows);
-    const row: Row = deserializeRow(table.pager[pageNum], i * ROW_SIZE);
+    const [page] = rowSlot(table, table.numRows);
+    const row: Row = deserializeRow(page, i * ROW_SIZE);
     printRow(row);
   }
   return ExecuteSuccess;
