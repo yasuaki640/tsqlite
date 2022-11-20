@@ -1,7 +1,11 @@
 describe 'database' do
+  before do
+    `rm -rf test.db`
+  end
+
   def run_script(commands)
     raw_output = nil
-    IO.popen("npm start --silent", "r+") do |pipe|
+    IO.popen("npm start test.db --silent", "r+") do |pipe|
       commands.each do |command|
         sleep 0.4
         pipe.puts command
@@ -23,6 +27,26 @@ describe 'database' do
     ])
     expect(result).to match_array([
       "db > Executed.",
+      "db > (1, user1, person1@example.com)",
+      "Executed.",
+      "db > ",
+    ])
+  end
+
+  it 'keeps data after closing connection' do
+    result1 = run_script([
+      "insert 1 user1 person1@example.com",
+      ".exit",
+    ])
+    expect(result1).to match_array([
+      "db > Executed.",
+      "db > ",
+    ])
+    result2 = run_script([
+      "select",
+      ".exit",
+    ])
+    expect(result2).to match_array([
       "db > (1, user1, person1@example.com)",
       "Executed.",
       "db > ",
@@ -66,20 +90,6 @@ describe 'database' do
     result = run_script(script)
     expect(result).to match_array([
       "db > String is too long.",
-      "db > Executed.",
-      "db > ",
-    ])
-  end
-
-  it 'prints an error message if id is negative' do
-    script = [
-      "insert -1 cstack foo@bar.com",
-      "select",
-      ".exit",
-    ]
-    result = run_script(script)
-    expect(result).to match_array([
-      "db > ID must be positive.",
       "db > Executed.",
       "db > ",
     ])
