@@ -7,7 +7,7 @@ describe 'database' do
     raw_output = nil
     IO.popen("npm start test.db --silent", "r+") do |pipe|
       commands.each do |command|
-        sleep 0.4
+        sleep 0.5
         pipe.puts command
       end
 
