@@ -253,7 +253,7 @@ function prepareInsert(input: string): [PrepareResult, Statement?] {
 
   const [idStr, username, email] = args;
 
-  if (!idStr || !username || !email) {
+  if (!idStr || !username || !email || isNaN(parseInt(idStr))) {
     return [PrepareSyntaxError];
   }
 
