@@ -1,6 +1,6 @@
 # tsqlite
 
-An implementation of [Tutorial (Let's Build a Simple Database)]((https://github.com/cstack/db_tutorial)) in TypeScript.
+An implementation of [Tutorial (Let's Build a Simple Database)](https://github.com/cstack/db_tutorial) in TypeScript.
 
 This implementation can't use in production.
 
