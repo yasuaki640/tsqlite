@@ -310,8 +310,10 @@ async function main(): Promise<void> {
     process.exit(1);
   }
 
-  const table = dbOpen(process.argv[2]);
-  for await (const input of readInputs("db > ")) {
+  const filename = process.argv[2];
+  const table = dbOpen(filename);
+  for await (const rawInput of readInputs("db > ")) {
+    const input = rawInput.trim();
     if (input.startsWith(".")) {
       switch (doMetaCommand(input, table)) {
         case (MetaCommandSuccess):
