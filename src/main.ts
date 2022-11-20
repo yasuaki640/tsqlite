@@ -1,13 +1,15 @@
-import * as readline from "readline";
-import * as fs from "fs";
+import * as readline from 'readline';
+import * as fs from 'fs';
 
 const ExecuteSuccess = Symbol();
 const ExecuteTableFull = Symbol();
-type ExecuteResult = typeof ExecuteSuccess | typeof ExecuteTableFull
+type ExecuteResult = typeof ExecuteSuccess | typeof ExecuteTableFull;
 
 const MetaCommandSuccess = Symbol();
 const MetaCommandUnrecognizedCommand = Symbol();
-type MetaCommandResult = typeof MetaCommandSuccess | typeof MetaCommandUnrecognizedCommand;
+type MetaCommandResult =
+  | typeof MetaCommandSuccess
+  | typeof MetaCommandUnrecognizedCommand;
 
 const PrepareSuccess = Symbol();
 const PrepareNegativeID = Symbol();
@@ -15,7 +17,7 @@ const PrepareUnrecognizedCommand = Symbol();
 const PrepareSyntaxError = Symbol();
 const PrepareStringTooLong = Symbol();
 type PrepareResult =
-  typeof PrepareSuccess
+  | typeof PrepareSuccess
   | typeof PrepareNegativeID
   | typeof PrepareUnrecognizedCommand
   | typeof PrepareSyntaxError
@@ -31,16 +33,16 @@ type Row = {
   id: number;
   username: string;
   email: string;
-}
+};
 
 type Statement = {
   type: StatementType;
   rowToInsert?: Row;
-}
+};
 
-const ID_SIZE = 4; // byte
-const USERNAME_SIZE = COLUMN_USERNAME_SIZE; // byte
-const EMAIL_SIZE = COLUMN_EMAIL_SIZE; // byte
+const ID_SIZE = 4;
+const USERNAME_SIZE = COLUMN_USERNAME_SIZE;
+const EMAIL_SIZE = COLUMN_EMAIL_SIZE;
 const ID_OFFSET = 0;
 const USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
 const EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
@@ -50,7 +52,6 @@ function getNthDigit(num: number, nth: number): number {
   return +num.toString()[nth];
 }
 
-// メモリにデータを書き込み
 function serializeRow(source: Row, departure: number, page: Uint8Array): void {
   const idLen = Math.min(ID_SIZE, source.id.toString().length);
   for (let i = 0; i < idLen; i++) {
@@ -68,23 +69,22 @@ function serializeRow(source: Row, departure: number, page: Uint8Array): void {
   }
 }
 
-// メモリからデータを取得
 function deserializeRow(page: Uint8Array, departure: number): Row {
-  let idStr = "";
+  let idStr = '';
   for (let i = 0; i < ID_SIZE; i++) {
     const digit = page[departure + i];
     if (digit === 0) break;
     idStr += digit.toString();
   }
 
-  let username = "";
+  let username = '';
   for (let i = 0; i < USERNAME_SIZE; i++) {
     const code = page[departure + USERNAME_OFFSET + i];
     if (code === 0) break;
     username += String.fromCharCode(code);
   }
 
-  let email = "";
+  let email = '';
   for (let i = 0; i < EMAIL_SIZE; i++) {
     const code = page[departure + EMAIL_OFFSET + i];
     if (code === 0) break;
@@ -94,7 +94,7 @@ function deserializeRow(page: Uint8Array, departure: number): Row {
   return {
     id: parseInt(idStr),
     username,
-    email
+    email,
   };
 }
 
@@ -107,16 +107,20 @@ type Pager = {
   fileDescriptor: number;
   fileLength: number;
   pages: Uint8Array[];
-}
+};
 
 type Table = {
   pager: Pager;
   numRows: number;
-}
+};
 
 function getPage(pager: Pager, pageNum: number): Uint8Array {
   if (pageNum > TABLE_MAX_PAGES) {
-    console.error("Tried to fetch page number out of bounds. %d > %d", pageNum, TABLE_MAX_PAGES);
+    console.log(
+      'Tried to fetch page number out of bounds. %d > %d',
+      pageNum,
+      TABLE_MAX_PAGES,
+    );
     process.exit(1);
   }
 
@@ -132,9 +136,15 @@ function getPage(pager: Pager, pageNum: number): Uint8Array {
 
     if (pageNum <= numPages) {
       try {
-        fs.readSync(pager.fileDescriptor, page, 0, PAGE_SIZE, pageNum * PAGE_SIZE);
+        fs.readSync(
+          pager.fileDescriptor,
+          page,
+          0,
+          PAGE_SIZE,
+          pageNum * PAGE_SIZE,
+        );
       } catch (e) {
-        console.error("Error reading file: %s", e.message);
+        console.log('Error reading file: %s', e.message);
         process.exit(1);
       }
     }
@@ -154,7 +164,7 @@ function rowSlot(table: Table, rowNum: number): [Uint8Array, number] {
 }
 
 function pagerOpen(filename: string): Pager {
-  const flag = fs.existsSync(filename) ? "r+" : "w+";
+  const flag = fs.existsSync(filename) ? 'r+' : 'w+';
   const fd = fs.openSync(filename, flag);
 
   const { size } = fs.statSync(filename);
@@ -164,7 +174,7 @@ function pagerOpen(filename: string): Pager {
   return {
     fileDescriptor: fd,
     fileLength: size,
-    pages
+    pages,
   };
 }
 
@@ -177,14 +187,20 @@ function dbOpen(filename: string): Table {
 
 function pagerFlush(pager: Pager, pageNum: number, size: number): void {
   if (pager.pages[pageNum] === null) {
-    console.error("Tried to flush null page");
+    console.log('Tried to flush null page');
     process.exit(1);
   }
 
-  const bytesWritten = fs.writeSync(pager.fileDescriptor, pager.pages[pageNum], 0, size, pageNum * PAGE_SIZE);
+  const bytesWritten = fs.writeSync(
+    pager.fileDescriptor,
+    pager.pages[pageNum],
+    0,
+    size,
+    pageNum * PAGE_SIZE,
+  );
 
   if (bytesWritten === -1) {
-    console.log("Error writing:");
+    console.log('Error writing:');
     process.exit(1);
   }
 }
@@ -213,13 +229,13 @@ function dbClose(table: Table): void {
   try {
     fs.closeSync(pager.fileDescriptor);
   } catch (e) {
-    console.error("Error closing db file.");
+    console.log('Error closing db file.');
     process.exit(1);
   }
 }
 
 function doMetaCommand(input: string, table: Table): MetaCommandResult {
-  if (input.includes(".exit")) {
+  if (input.includes('.exit')) {
     dbClose(table);
     process.exit();
   } else {
@@ -227,13 +243,13 @@ function doMetaCommand(input: string, table: Table): MetaCommandResult {
   }
 }
 
-const CLAUSE_INSERT = "insert" + " ";
+const CLAUSE_INSERT = 'insert' + ' ';
 
 function prepareInsert(input: string): [PrepareResult, Statement?] {
   const args = input
-    .replace(CLAUSE_INSERT, "")
-    .split(" ")
-    .filter(split => split !== "");
+    .replace(CLAUSE_INSERT, '')
+    .split(' ')
+    .filter((split) => split !== '');
 
   const [idStr, username, email] = args;
 
@@ -241,7 +257,10 @@ function prepareInsert(input: string): [PrepareResult, Statement?] {
     return [PrepareSyntaxError];
   }
 
-  if (username.length > COLUMN_USERNAME_SIZE || email.length > COLUMN_EMAIL_SIZE) {
+  if (
+    username.length > COLUMN_USERNAME_SIZE ||
+    email.length > COLUMN_EMAIL_SIZE
+  ) {
     return [PrepareStringTooLong];
   }
 
@@ -253,7 +272,7 @@ function prepareInsert(input: string): [PrepareResult, Statement?] {
   const rowToInsert: Row = {
     id,
     username,
-    email
+    email,
   };
 
   return [PrepareSuccess, { type: StatementInsert, rowToInsert }];
@@ -264,7 +283,7 @@ function prepareStatement(input: string): [PrepareResult, Statement?] {
     return prepareInsert(input);
   }
 
-  if (input === "select") {
+  if (input === 'select') {
     return [PrepareSuccess, { type: StatementSelect }];
   }
 
@@ -274,11 +293,11 @@ function prepareStatement(input: string): [PrepareResult, Statement?] {
 async function* readInputs(prompt: string): AsyncGenerator<string> {
   const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
   });
 
   try {
-    for (; ;) {
+    for (;;) {
       yield new Promise<string>((resolve) => rl.question(prompt, resolve));
     }
   } finally {
@@ -288,9 +307,9 @@ async function* readInputs(prompt: string): AsyncGenerator<string> {
 
 function executeStatement(statement: Statement, table: Table): ExecuteResult {
   switch (statement?.type) {
-    case (StatementInsert):
+    case StatementInsert:
       return executeInsert(statement, table);
-    case (StatementSelect):
+    case StatementSelect:
       return executeSelect(statement, table);
   }
 }
@@ -323,19 +342,19 @@ function executeSelect(statement: Statement, table: Table): ExecuteResult {
 
 async function main(): Promise<void> {
   if (process.argv.length < 3) {
-    console.error("Must supply a database filename.");
+    console.log('Must supply a database filename.');
     process.exit(1);
   }
 
   const filename = process.argv[2];
   const table = dbOpen(filename);
-  for await (const rawInput of readInputs("db > ")) {
+  for await (const rawInput of readInputs('db > ')) {
     const input = rawInput.trim();
-    if (input.startsWith(".")) {
+    if (input.startsWith('.')) {
       switch (doMetaCommand(input, table)) {
-        case (MetaCommandSuccess):
+        case MetaCommandSuccess:
           continue;
-        case(MetaCommandUnrecognizedCommand):
+        case MetaCommandUnrecognizedCommand:
           console.log(`Unrecognized command ${input}`);
           continue;
       }
@@ -344,28 +363,28 @@ async function main(): Promise<void> {
     const [res, statement] = prepareStatement(input);
 
     switch (res) {
-      case (PrepareSuccess):
+      case PrepareSuccess:
         break;
-      case (PrepareNegativeID):
-        console.log("ID must be positive.");
+      case PrepareNegativeID:
+        console.log('ID must be positive.');
         break;
-      case (PrepareStringTooLong):
-        console.log("String is too long.");
+      case PrepareStringTooLong:
+        console.log('String is too long.');
         continue;
-      case (PrepareSyntaxError):
-        console.log("Syntax error. Could not parse statement.");
+      case PrepareSyntaxError:
+        console.log('Syntax error. Could not parse statement.');
         break;
-      case (PrepareUnrecognizedCommand):
+      case PrepareUnrecognizedCommand:
         console.log(`Unrecognized keyword at start of ${input}`);
         continue;
     }
 
     switch (executeStatement(statement, table)) {
-      case (ExecuteSuccess):
-        console.log("Executed.");
+      case ExecuteSuccess:
+        console.log('Executed.');
         break;
-      case (ExecuteTableFull):
-        console.log("Error: Table full.");
+      case ExecuteTableFull:
+        console.log('Error: Table full.');
         break;
     }
   }
